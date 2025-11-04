@@ -1,5 +1,6 @@
+// frontend/src/pages/Register.jsx
 import React, { useState } from 'react';
-import { register } from '../api/auth';
+import { register as apiRegister } from '../api/auth';
 import { useAuth } from '../context/AuthContext';
 import { Link } from 'react-router-dom';
 
@@ -15,52 +16,78 @@ export default function Register() {
   async function submit(e) {
     e.preventDefault();
     setErr(null);
+    if (!name.trim() || !email.trim() || !password) {
+      setErr('Name, email and password required');
+      return;
+    }
     setLoading(true);
     try {
-      const data = await register(name, email, password);
-      if (data.token) {
-        doLogin(data.token, data.user);
+      // apiRegister returns { token, user }
+      const res = await apiRegister(name.trim(), email.trim(), password);
+      if (!res || !res.token) {
+        setErr('Registration failed');
+        setLoading(false);
+        return;
       }
+      // log user in via context
+      doLogin(res.token, res.user);
     } catch (error) {
-      setErr(error?.response?.data?.message || 'Registration failed');
-    } finally {
+      console.error('Register error', error);
+      const msg = error?.response?.data?.message || 'Registration failed';
+      setErr(msg);
       setLoading(false);
     }
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center p-6">
-      <div className="max-w-md w-full bg-white rounded-xl shadow p-6">
-        <h2 className="text-2xl font-bold mb-4">Register</h2>
-        {err && <div className="mb-3 text-sm text-red-600">{err}</div>}
+    <div className="min-h-screen flex items-center justify-center p-4">
+      <div className="max-w-md w-full bg-white p-6 rounded shadow">
+        <h2 className="text-2xl font-semibold mb-4">Create account</h2>
+
+        {err && <div className="mb-3 text-red-600">{err}</div>}
+
         <form onSubmit={submit} className="space-y-3">
-          <input
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            placeholder="Full name"
-            className="w-full border px-3 py-2 rounded"
-            required
-          />
-          <input
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            placeholder="Email"
-            type="email"
-            className="w-full border px-3 py-2 rounded"
-            required
-          />
-          <input
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            placeholder="Password"
-            type="password"
-            className="w-full border px-3 py-2 rounded"
-            required
-          />
-          <button className="w-full bg-indigo-600 text-white px-4 py-2 rounded" disabled={loading}>
+          <div>
+            <label className="block text-sm mb-1">Full name</label>
+            <input
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              className="w-full border px-3 py-2 rounded"
+              required
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm mb-1">Email</label>
+            <input
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              type="email"
+              className="w-full border px-3 py-2 rounded"
+              required
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm mb-1">Password</label>
+            <input
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              type="password"
+              className="w-full border px-3 py-2 rounded"
+              required
+            />
+          </div>
+
+          <button
+            type="submit"
+            className="w-full bg-indigo-600 text-white px-4 py-2 rounded"
+            disabled={loading}
+          >
             {loading ? 'Creating...' : 'Create account'}
           </button>
         </form>
+
         <div className="mt-4 text-sm">
           Already have an account? <Link to="/login" className="text-indigo-600">Log in</Link>
         </div>

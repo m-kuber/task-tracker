@@ -1,133 +1,162 @@
 // frontend/src/pages/TeamBoard.jsx
 import React, { useEffect, useState } from 'react';
-import { useParams } from 'react-router-dom';
-import { listTasks, createTask, updateTask, deleteTask } from '../api/tasks';
-import { useNavigate } from 'react-router-dom';
-import { getTeamMembers } from '../api/teams';
+import { useParams, useNavigate } from 'react-router-dom';
+import { listTasks, createTask, updateTask, deleteTask, listAttachments, uploadAttachment } from '../api/tasks';
+import TaskForm from '../components/TaskForm';
+import AttachmentList from '../components/AttachmentList';
 
-const navigate = useNavigate();
+const ORDER = ['todo', 'inprogress', 'done'];
+const LABEL = { todo: 'To Do', inprogress: 'In Progress', done: 'Done' };
 
 export default function TeamBoard() {
   const { teamId } = useParams();
-  const [columns, setColumns] = useState({
-    todo: [],
-    inprogress: [],
-    done: [],
-  });
-  const [newTitle, setNewTitle] = useState('');
+  const navigate = useNavigate();
+  const [cols, setCols] = useState({ todo: [], inprogress: [], done: [] });
+  const [err, setErr] = useState(null);
+  const [selectedTask, setSelectedTask] = useState(null);
+  const [attachments, setAttachments] = useState([]);
 
   async function load() {
+    setErr(null);
     try {
       const res = await listTasks({ teamId });
       const tasks = res.tasks || [];
-      const cols = { todo: [], inprogress: [], done: [] };
-      tasks.forEach((t) => cols[t.status || 'todo'].push(t));
-      setColumns(cols);
-    } catch (err) {
-      console.error('Error loading tasks:', err);
+      const map = { todo: [], inprogress: [], done: [] };
+      tasks.forEach((t) => map[t.status || 'todo'].push(t));
+      setCols(map);
+    } catch (e) {
+      console.error(e);
+      setErr('Failed to load tasks');
     }
   }
 
   useEffect(() => {
-    if (teamId) load();
+    if (!teamId) return;
+    load();
   }, [teamId]);
 
-  async function handleAddTask() {
-    if (!newTitle.trim()) return;
+  async function addTaskFromForm() {
+    await load();
+  }
+
+  async function changeStatus(taskId, newStatus) {
     try {
-      await createTask({ title: newTitle, teamId });
-      setNewTitle('');
-      load();
+      await updateTask(taskId, { status: newStatus });
+      await load();
     } catch (err) {
-      console.error('Error creating task:', err);
+      console.error(err);
+      setErr('Failed to update status');
     }
   }
 
-  async function handleDeleteTask(id) {
+  async function removeTask(id) {
     try {
       await deleteTask(id);
-      load();
+      await load();
+      if (selectedTask && selectedTask.id === id) setSelectedTask(null);
     } catch (err) {
-      console.error('Error deleting task:', err);
+      console.error(err);
+      setErr('Failed to delete task');
     }
   }
 
-  async function handleStatusChange(id, newStatus) {
+  async function openTask(task) {
+    setSelectedTask(task);
     try {
-      await updateTask(id, { status: newStatus });
-      load();
+      const res = await listAttachments(task.id);
+      setAttachments(res.attachments || []);
     } catch (err) {
-      console.error('Error updating status:', err);
+      console.error(err);
+      setAttachments([]);
+    }
+  }
+
+  async function handleUpload(file) {
+    if (!selectedTask || !file) return;
+    try {
+      await uploadAttachment(selectedTask.id, file);
+      const res = await listAttachments(selectedTask.id);
+      setAttachments(res.attachments || []);
+    } catch (err) {
+      console.error(err);
+      alert('Upload failed');
     }
   }
 
   return (
-    <div className="p-4">
-      <button onClick={() => navigate(-1)} className="mb-3 text-sm text-slate-600 hover:underline">
-        ← Back
-      </button>
-      
-      {/* Header */}
-      <div className="flex mb-4">
-        <input
-          className="border p-2 flex-grow rounded"
-          placeholder="New task title"
-          value={newTitle}
-          onChange={(e) => setNewTitle(e.target.value)}
-        />
-        <button
-          onClick={handleAddTask}
-          className="ml-2 bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700"
-        >
-          Add
-        </button>
+    <div className="min-h-screen p-4">
+      <div className="mb-4 flex items-center gap-3">
+        <button onClick={() => navigate(-1)} className="text-slate-600 hover:underline">← Back</button>
+        <h2 className="text-xl font-semibold">Team Board</h2>
       </div>
 
-      {/* Kanban Columns */}
+      <div className="mb-4">
+        <TaskForm teamId={teamId} onCreated={addTaskFromForm} />
+      </div>
+
+      {err && <div className="text-red-600 mb-2">{err}</div>}
+
       <div className="grid grid-cols-3 gap-4">
-        {Object.keys(columns).map((col) => (
-          <div key={col} className="bg-gray-50 rounded-lg p-3 shadow">
-            <h2 className="font-semibold text-lg capitalize mb-2 border-b pb-1">
-              {col === 'todo'
-                ? 'To Do'
-                : col === 'inprogress'
-                ? 'In Progress'
-                : 'Done'}
-            </h2>
+        {ORDER.map((status) => (
+          <div key={status} className="bg-slate-50 p-3 rounded min-h-[300px]">
+            <h3 className="font-semibold mb-2">{LABEL[status]}</h3>
+            <div className="space-y-3">
+              {(cols[status] || []).map((t) => (
+                <div key={t.id} className="bg-white p-3 rounded shadow-sm">
+                  <div className="flex justify-between items-start gap-3">
+                    <div>
+                      <div className="font-medium">{t.title}</div>
+                      {t.description && <div className="text-sm text-slate-600">{t.description}</div>}
+                    </div>
 
-            <div className="space-y-2">
-              {columns[col].map((task) => (
-                <div
-                  key={task.id}
-                  className="bg-white p-3 shadow-sm rounded flex flex-col gap-2"
-                >
-                  <div className="flex justify-between items-center">
-                    <span className="font-medium">{task.title}</span>
-                    <button
-                      onClick={() => handleDeleteTask(task.id)}
-                      className="text-red-500 text-sm hover:text-red-700"
-                    >
-                      ✕
-                    </button>
+                    <div className="flex flex-col items-end gap-2">
+                      <select
+                        value={t.status}
+                        onChange={(e) => changeStatus(t.id, e.target.value)}
+                        className="border rounded p-1 text-sm"
+                      >
+                        <option value="todo">To Do</option>
+                        <option value="inprogress">In Progress</option>
+                        <option value="done">Done</option>
+                      </select>
+
+                      <div className="flex gap-2">
+                        <button className="text-sm text-indigo-600" onClick={() => openTask(t)}>Open</button>
+                        <button className="text-sm text-red-600" onClick={() => removeTask(t.id)}>Delete</button>
+                      </div>
+                    </div>
                   </div>
-
-                  <select
-                    value={task.status}
-                    onChange={(e) =>
-                      handleStatusChange(task.id, e.target.value)
-                    }
-                    className="border rounded p-1 text-sm"
-                  >
-                    <option value="todo">To Do</option>
-                    <option value="inprogress">In Progress</option>
-                    <option value="done">Done</option>
-                  </select>
                 </div>
               ))}
             </div>
           </div>
         ))}
       </div>
+
+      {/* Task drawer / modal */}
+      {selectedTask && (
+        <div className="fixed inset-0 bg-black/50 flex items-end md:items-center justify-center p-4">
+          <div className="bg-white w-full md:w-3/5 max-h-[80vh] overflow-auto rounded p-4">
+            <div className="flex justify-between items-center mb-3">
+              <h3 className="text-lg font-semibold">{selectedTask.title}</h3>
+              <button className="text-sm text-slate-500" onClick={() => setSelectedTask(null)}>Close</button>
+            </div>
+
+            <div className="mb-3">
+              <div className="text-sm text-slate-600">{selectedTask.description}</div>
+            </div>
+
+            <div className="mb-3">
+              <h4 className="font-medium mb-2">Attachments</h4>
+              <AttachmentList attachments={attachments} onDeleted={() => openTask(selectedTask)} />
+              <div className="mt-3">
+                <label className="block text-sm">Upload file</label>
+                <input type="file" onChange={(e) => handleUpload(e.target.files?.[0])} />
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
