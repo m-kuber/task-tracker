@@ -1,5 +1,6 @@
 // frontend/src/api/teams.js
 import api from './axios';
+import api from './api';
 
 export async function createTeam(name) {
   const res = await api.post('/teams', { name });
@@ -20,3 +21,8 @@ export async function getTeam(teamId) {
   const res = await api.get(`/teams/${teamId}`);
   return res.data;
 }
+
+export const getTeamMembers = async (teamId) => {
+  const response = await api.get(`/teams/${teamId}/members`);
+  return response.data;
+};

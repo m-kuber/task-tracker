@@ -136,3 +136,35 @@ exports.getTeamById = async (req, res) => {
     return res.status(500).json({ message: 'Server error fetching team' });
   }
 };
+
+/**
+ * GET /api/teams/:id/members
+ */
+exports.getTeamMembers = async (req, res) => {
+  try {
+    const teamId = Number(req.params.id);
+    if (Number.isNaN(teamId)) return res.status(400).json({ message: 'Invalid team id' });
+
+    // ensure requester is a member
+    const myMembership = await TeamMember.findOne({ where: { teamId, userId: req.user.id } });
+    if (!myMembership) return res.status(403).json({ message: 'Not a member' });
+
+    const members = await TeamMember.findAll({
+      where: { teamId },
+      include: [{ model: User, as: 'user', attributes: ['id', 'name', 'email'] }],
+      order: [['createdAt', 'ASC']]
+    });
+
+    const out = members.map(m => ({
+      id: m.user?.id || null,
+      name: m.user?.name || null,
+      email: m.user?.email || null,
+      role: m.role
+    }));
+
+    return res.json({ members: out });
+  } catch (err) {
+    console.error('getTeamMembers error:', err);
+    return res.status(500).json({ message: 'Server error fetching members' });
+  }
+};

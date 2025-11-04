@@ -2,6 +2,10 @@
 import React, { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { listTasks, createTask, updateTask, deleteTask } from '../api/tasks';
+import { useNavigate } from 'react-router-dom';
+import { getTeamMembers } from '../api/teams';
+
+const navigate = useNavigate();
 
 export default function TeamBoard() {
   const { teamId } = useParams();
@@ -59,6 +63,10 @@ export default function TeamBoard() {
 
   return (
     <div className="p-4">
+      <button onClick={() => navigate(-1)} className="mb-3 text-sm text-slate-600 hover:underline">
+        ← Back
+      </button>
+      
       {/* Header */}
       <div className="flex mb-4">
         <input

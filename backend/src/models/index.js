@@ -2,12 +2,12 @@
 const Sequelize = require('sequelize');
 const sequelize = require('../config/database');
 
-// import model definition files (they must export initModel)
 const User = require('./user');
 const Team = require('./team');
 const TeamMember = require('./teamMember');
 const Task = require('./task');
 const TaskComment = require('./taskComment');
+const TaskAttachment = require('./taskAttachment');
 
 const models = {};
 
@@ -17,6 +17,7 @@ models.Team = Team.initModel(sequelize);
 models.TeamMember = TeamMember.initModel(sequelize);
 models.Task = Task.initModel(sequelize);
 models.TaskComment = TaskComment.initModel(sequelize);
+models.TaskAttachment = TaskAttachment.initModel(sequelize);
 
 // Associations
 
@@ -52,11 +53,18 @@ models.Task.belongsTo(models.User, { foreignKey: 'createdBy', as: 'Creator' });
 models.Task.hasMany(models.TaskComment, { foreignKey: 'taskId', as: 'comments', onDelete: 'CASCADE' });
 models.TaskComment.belongsTo(models.Task, { foreignKey: 'taskId', as: 'task' });
 
+// TaskAttachment -> Task
+models.Task.hasMany(models.TaskAttachment, { foreignKey: 'taskId', as: 'attachments', onDelete: 'CASCADE' });
+models.TaskAttachment.belongsTo(models.Task, { foreignKey: 'taskId', as: 'task' });
+
+// TaskAttachment -> User (uploader)
+models.User.hasMany(models.TaskAttachment, { foreignKey: 'uploadedBy', as: 'uploads' });
+models.TaskAttachment.belongsTo(models.User, { foreignKey: 'uploadedBy', as: 'uploader' });
+
 // TaskComment -> User
 models.User.hasMany(models.TaskComment, { foreignKey: 'userId', as: 'comments' });
 models.TaskComment.belongsTo(models.User, { foreignKey: 'userId', as: 'user' });
 
-// export initialized models
 module.exports = {
   sequelize,
   Sequelize,
@@ -65,4 +73,5 @@ module.exports = {
   TeamMember: models.TeamMember,
   Task: models.Task,
   TaskComment: models.TaskComment,
+  TaskAttachment: models.TaskAttachment,
 };

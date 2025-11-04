@@ -1,5 +1,8 @@
-// backend/src/controllers/taskController.js
-const { Task, TeamMember } = require('../models');
+// backend/src/controllers/taskController.js=
+const { Task, TaskAttachment, TeamMember } = require('../models');
+const fs = require('fs');
+const path = require('path');
+const { UPLOAD_DIR } = require('../middleware/upload'); // path to uploads
 
 async function ensureTeamMember(userId, teamId) {
   if (!teamId) return false;
@@ -179,5 +182,110 @@ exports.deleteTask = async (req, res) => {
   } catch (err) {
     console.error('deleteTask error:', err);
     res.status(500).json({ message: 'Server error deleting task' });
+  }
+};
+
+/**
+ * POST /api/tasks/:id/attachments
+ * middleware: upload.single('file')
+ */
+exports.uploadAttachment = async (req, res) => {
+  try {
+    const taskId = Number(req.params.id);
+    if (Number.isNaN(taskId)) return res.status(400).json({ message: 'Invalid task id' });
+
+    const task = await Task.findByPk(taskId);
+    if (!task) return res.status(404).json({ message: 'Task not found' });
+
+    // check access: if task is team task ensure user is team member OR if personal ensure owner
+    if (task.teamId) {
+      const isMember = await TeamMember.findOne({ where: { teamId: task.teamId, userId: req.user.id } });
+      if (!isMember) return res.status(403).json({ message: 'Not a member of the team' });
+    } else {
+      if (task.userId !== req.user.id && task.createdBy !== req.user.id) {
+        return res.status(403).json({ message: 'Not authorized to attach to this task' });
+      }
+    }
+
+    if (!req.file) return res.status(400).json({ message: 'No file uploaded' });
+
+    const file = req.file;
+    const attachment = await TaskAttachment.create({
+      filename: file.filename,
+      originalName: file.originalname,
+      mimeType: file.mimetype,
+      size: file.size,
+      path: path.join('uploads', file.filename),
+      taskId: taskId,
+      uploadedBy: req.user.id
+    });
+
+    return res.status(201).json({ attachment });
+  } catch (err) {
+    console.error('uploadAttachment error:', err);
+    return res.status(500).json({ message: 'Server error uploading file' });
+  }
+};
+
+/**
+ * GET /api/tasks/:id/attachments
+ */
+exports.listAttachments = async (req, res) => {
+  try {
+    const taskId = Number(req.params.id);
+    if (Number.isNaN(taskId)) return res.status(400).json({ message: 'Invalid task id' });
+
+    const attachments = await TaskAttachment.findAll({
+      where: { taskId },
+      include: [{ model: require('../models').User, as: 'uploader', attributes: ['id', 'name', 'email'] }],
+      order: [['createdAt', 'DESC']]
+    });
+
+    return res.json({ attachments });
+  } catch (err) {
+    console.error('listAttachments error:', err);
+    return res.status(500).json({ message: 'Server error listing attachments' });
+  }
+};
+
+/**
+ * DELETE /api/attachments/:id
+ */
+exports.deleteAttachment = async (req, res) => {
+  try {
+    const id = Number(req.params.id);
+    if (Number.isNaN(id)) return res.status(400).json({ message: 'Invalid attachment id' });
+
+    const attachment = await TaskAttachment.findByPk(id);
+    if (!attachment) return res.status(404).json({ message: 'Attachment not found' });
+
+    // Only uploader or task creator can delete, or team admin
+    const task = await Task.findByPk(attachment.taskId);
+    if (!task) return res.status(404).json({ message: 'Related task not found' });
+
+    const isUploader = attachment.uploadedBy === req.user.id;
+    let isTeamAdmin = false;
+    if (task.teamId) {
+      const membership = await TeamMember.findOne({ where: { teamId: task.teamId, userId: req.user.id } });
+      if (membership && membership.role === 'admin') isTeamAdmin = true;
+    }
+
+    if (!isUploader && !isTeamAdmin && task.createdBy !== req.user.id) {
+      return res.status(403).json({ message: 'Not authorized to delete attachment' });
+    }
+
+    // delete file on disk
+    const fullPath = path.join(PROJECT_ROOT || process.cwd(), 'backend', attachment.path); // fallback to process.cwd()
+    // if we used UPLOAD_DIR earlier then path is 'uploads/filename'
+    const diskPath = path.join(UPLOAD_DIR, attachment.filename);
+    if (fs.existsSync(diskPath)) {
+      fs.unlinkSync(diskPath);
+    }
+
+    await attachment.destroy();
+    return res.json({ message: 'Attachment deleted' });
+  } catch (err) {
+    console.error('deleteAttachment error:', err);
+    return res.status(500).json({ message: 'Server error deleting attachment' });
   }
 };
