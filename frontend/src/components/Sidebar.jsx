@@ -18,9 +18,12 @@ export default function Sidebar() {
     load();
   }, []);
 
-  const active = (path) => location.pathname.startsWith(path)
-    ? 'bg-slate-100 font-semibold'
-    : 'hover:bg-slate-50';
+  const active = (path) => {
+    const p = location.pathname;
+    if (path === '/my-tasks') return p === '/my-tasks' ? 'bg-slate-100 font-semibold' : 'hover:bg-slate-50';
+    if (path === '/my-tasks-board') return p === '/my-tasks-board' ? 'bg-slate-100 font-semibold' : 'hover:bg-slate-50';
+    return p.startsWith(path) ? 'bg-slate-100 font-semibold' : 'hover:bg-slate-50';
+  };
 
   return (
     <aside className="w-64 bg-white border-r min-h-screen p-4">
@@ -35,6 +38,11 @@ export default function Sidebar() {
           <li className="mt-2">
             <Link to="/my-tasks" className={`block px-3 py-2 rounded ${active('/my-tasks')}`}>
               My Tasks
+            </Link>
+          </li>
+          <li className="mt-2">
+            <Link to="/my-tasks-board" className={`block px-3 py-2 rounded ${active('/my-tasks-board')}`}>
+              My Tasks Kanban
             </Link>
           </li>
         </ul>

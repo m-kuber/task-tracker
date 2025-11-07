@@ -1,5 +1,5 @@
 // frontend/src/components/TaskForm.jsx
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { createTask, uploadAttachment } from '../api/tasks';
 
 export default function TaskForm({
@@ -11,6 +11,7 @@ export default function TaskForm({
   const [description, setDescription] = useState('');
   const [file, setFile] = useState(null);
   const [loading, setLoading] = useState(false);
+  const fileInputRef = useRef(null);
 
   async function handleSubmit(e) {
     e.preventDefault();
@@ -33,6 +34,10 @@ export default function TaskForm({
       setTitle('');
       setDescription('');
       setFile(null);
+      // Reset file input
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+      }
       if (onCreated) onCreated();
     } catch (err) {
       console.error('Create task error', err);
@@ -58,6 +63,7 @@ export default function TaskForm({
       />
       <div className="flex items-center gap-2">
         <input
+          ref={fileInputRef}
           type="file"
           onChange={(e) => setFile(e.target.files?.[0] || null)}
         />

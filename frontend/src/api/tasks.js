@@ -32,9 +32,8 @@ export async function deleteTask(id) {
 export async function uploadAttachment(taskId, file) {
   const form = new FormData();
   form.append('file', file);
-  const res = await api.post(`/tasks/${taskId}/attachments`, form, {
-    headers: { 'Content-Type': 'multipart/form-data' },
-  });
+  // Let axios set the correct multipart boundary automatically
+  const res = await api.post(`/tasks/${taskId}/attachments`, form);
   return res.data;
 }
 

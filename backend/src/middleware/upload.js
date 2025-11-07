@@ -21,8 +21,12 @@ const storage = multer.diskStorage({
 });
 
 function fileFilter(req, file, cb) {
-  const allowed = /jpeg|jpg|png|gif|pdf|doc|docx|xls|xlsx|txt/;
-  if (allowed.test(file.mimetype) || allowed.test(file.mimetype.split('/')[1])) {
+  const allowed = /jpeg|jpg|png|gif|pdf|doc|docx|xls|xlsx|txt|plain|text/;
+  const mime = String(file.mimetype || '').toLowerCase();
+  const subtype = mime.includes('/') ? mime.split('/')[1] : mime;
+  const ext = path.extname(file.originalname || '').slice(1).toLowerCase();
+
+  if (allowed.test(mime) || allowed.test(subtype) || allowed.test(ext)) {
     cb(null, true);
   } else {
     cb(new Error('File type not allowed'), false);

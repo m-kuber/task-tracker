@@ -27,7 +27,16 @@ export default function AttachmentList({ attachments = [], onDeleted }) {
           <div className="flex items-center gap-3">
             <a
               className="text-indigo-600 hover:underline"
-              href={a.path.startsWith('http') ? a.path : `${import.meta.env.VITE_API_URL || 'http://localhost:4000'}/${a.path}`}
+              href={(() => {
+                const api = import.meta.env.VITE_API_URL || 'http://localhost:4000/api';
+                const origin = api.replace(/\/?api\/?$/, '');
+                if (a.path.startsWith('http')) return a.path;
+                if (a.path.startsWith('/') || /^[A-Za-z]:/.test(a.path)) {
+                  const filename = a.path.split(/[/\\]/).pop();
+                  return `${origin}/uploads/${filename}`;
+                }
+                return `${origin}/${a.path}`;
+              })()}
               target="_blank"
               rel="noreferrer"
             >

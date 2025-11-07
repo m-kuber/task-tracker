@@ -11,7 +11,9 @@ async function start() {
     console.log('Database connected.');
 
     // Sync models. In production replace with migrations.
-    await models.sequelize.sync({ alter: true }); // alter for dev convenience
+    // Use alter: false to prevent "Too many keys" error in MySQL
+    // Tables will be created if they don't exist, but won't be altered
+    await models.sequelize.sync({ alter: false });
     console.log('Models synced.');
 
     app.listen(PORT, () => {

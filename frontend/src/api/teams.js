@@ -25,3 +25,13 @@ export async function getTeamMembers(teamId) {
   const res = await api.get(`/teams/${teamId}/members`);
   return res.data;
 }
+
+export async function removeTeamMember(teamId, userId) {
+  const res = await api.delete(`/teams/${teamId}/members/${userId}`);
+  return res.data;
+}
+
+export async function deleteTeam(teamId) {
+  const res = await api.delete(`/teams/${teamId}`);
+  return res.data;
+}

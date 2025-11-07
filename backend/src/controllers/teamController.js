@@ -168,3 +168,83 @@ exports.getTeamMembers = async (req, res) => {
     return res.status(500).json({ message: 'Server error fetching members' });
   }
 };
+
+/**
+ * DELETE /api/teams/:teamId/members/:userId
+ * Remove a member from a team (admin only)
+ */
+exports.removeTeamMember = async (req, res) => {
+  try {
+    const teamId = Number(req.params.teamId);
+    const userId = Number(req.params.userId);
+    const adminId = req.user.id;
+
+    if (Number.isNaN(teamId) || Number.isNaN(userId)) {
+      return res.status(400).json({ message: 'Invalid team or user id' });
+    }
+
+    // Check if team exists
+    const team = await Team.findByPk(teamId);
+    if (!team) return res.status(404).json({ message: 'Team not found' });
+
+    // Check if requester is admin (team creator or member with admin role)
+    const adminMembership = await TeamMember.findOne({ where: { teamId, userId: adminId } });
+    const isTeamCreator = team.createdBy === adminId;
+    const isAdmin = adminMembership?.role === 'admin';
+
+    if (!isTeamCreator && !isAdmin) {
+      return res.status(403).json({ message: 'Only admins can remove members' });
+    }
+
+    // Prevent removing self
+    if (userId === adminId) {
+      return res.status(400).json({ message: 'Cannot remove yourself' });
+    }
+
+    // Check if user is a member
+    const membership = await TeamMember.findOne({ where: { teamId, userId } });
+    if (!membership) {
+      return res.status(404).json({ message: 'User is not a member of this team' });
+    }
+
+    // Remove the membership
+    await membership.destroy();
+
+    return res.json({ message: 'Member removed successfully' });
+  } catch (err) {
+    console.error('removeTeamMember error:', err);
+    return res.status(500).json({ message: 'Server error removing member' });
+  }
+};
+
+/**
+ * DELETE /api/teams/:teamId
+ * Delete a team (admin/creator only)
+ */
+exports.deleteTeam = async (req, res) => {
+  try {
+    const teamId = Number(req.params.teamId);
+    const userId = req.user.id;
+
+    if (Number.isNaN(teamId)) {
+      return res.status(400).json({ message: 'Invalid team id' });
+    }
+
+    // Check if team exists
+    const team = await Team.findByPk(teamId);
+    if (!team) return res.status(404).json({ message: 'Team not found' });
+
+    // Check if requester is team creator
+    if (team.createdBy !== userId) {
+      return res.status(403).json({ message: 'Only team creator can delete the team' });
+    }
+
+    // Delete team (cascade will handle TeamMembers and Tasks)
+    await team.destroy();
+
+    return res.json({ message: 'Team deleted successfully' });
+  } catch (err) {
+    console.error('deleteTeam error:', err);
+    return res.status(500).json({ message: 'Server error deleting team' });
+  }
+};

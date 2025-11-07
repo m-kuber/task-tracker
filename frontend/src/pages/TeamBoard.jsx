@@ -1,9 +1,11 @@
 // frontend/src/pages/TeamBoard.jsx
 import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { listTasks, createTask, updateTask, deleteTask, listAttachments, uploadAttachment } from '../api/tasks';
+import { listTasks, updateTask, deleteTask, listAttachments, uploadAttachment } from '../api/tasks';
 import TaskForm from '../components/TaskForm';
 import AttachmentList from '../components/AttachmentList';
+import Sidebar from '../components/Sidebar';
+import Topbar from '../components/Topbar';
 
 const ORDER = ['todo', 'inprogress', 'done'];
 const LABEL = { todo: 'To Do', inprogress: 'In Progress', done: 'Done' };
@@ -55,8 +57,9 @@ export default function TeamBoard() {
       await load();
       if (selectedTask && selectedTask.id === id) setSelectedTask(null);
     } catch (err) {
-      console.error(err);
-      setErr('Failed to delete task');
+      console.error('delete error', err);
+      const msg = err?.response?.data?.message || 'Failed to delete task';
+      alert(msg);
     }
   }
 
@@ -84,79 +87,100 @@ export default function TeamBoard() {
   }
 
   return (
-    <div className="min-h-screen p-4">
-      <div className="mb-4 flex items-center gap-3">
-        <button onClick={() => navigate(-1)} className="text-slate-600 hover:underline">← Back</button>
-        <h2 className="text-xl font-semibold">Team Board</h2>
-      </div>
+    <div className="min-h-screen flex">
+      <Sidebar />
+      <div className="flex-1">
+        <Topbar title="Team Board" />
+        <main className="p-6">
+          <div className="mb-4 flex flex-col items-start gap-3">
+            <div className="flex items-center gap-3">
+              <button
+                onClick={() => navigate(-1)}
+                className="inline-flex items-center gap-2 px-3 py-1 rounded-md text-sm bg-white border hover:shadow-sm"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 text-slate-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                </svg>
+                Back
+              </button>
+              <h2 className="text-xl font-semibold">Team Board</h2>
+            </div>
 
-      <div className="mb-4">
-        <TaskForm teamId={teamId} onCreated={addTaskFromForm} />
-      </div>
+            <div className="w-full">
+              <TaskForm teamId={teamId} onCreated={addTaskFromForm} />
+            </div>
+          </div>
 
-      {err && <div className="text-red-600 mb-2">{err}</div>}
+          {err && <div className="text-red-600 mb-2">{err}</div>}
 
-      <div className="grid grid-cols-3 gap-4">
-        {ORDER.map((status) => (
-          <div key={status} className="bg-slate-50 p-3 rounded min-h-[300px]">
-            <h3 className="font-semibold mb-2">{LABEL[status]}</h3>
-            <div className="space-y-3">
-              {(cols[status] || []).map((t) => (
-                <div key={t.id} className="bg-white p-3 rounded shadow-sm">
-                  <div className="flex justify-between items-start gap-3">
-                    <div>
-                      <div className="font-medium">{t.title}</div>
-                      {t.description && <div className="text-sm text-slate-600">{t.description}</div>}
-                    </div>
-
-                    <div className="flex flex-col items-end gap-2">
-                      <select
-                        value={t.status}
-                        onChange={(e) => changeStatus(t.id, e.target.value)}
-                        className="border rounded p-1 text-sm"
-                      >
-                        <option value="todo">To Do</option>
-                        <option value="inprogress">In Progress</option>
-                        <option value="done">Done</option>
-                      </select>
-
-                      <div className="flex gap-2">
-                        <button className="text-sm text-indigo-600" onClick={() => openTask(t)}>Open</button>
-                        <button className="text-sm text-red-600" onClick={() => removeTask(t.id)}>Delete</button>
+          <div className="grid grid-cols-3 gap-4">
+            {ORDER.map((status) => (
+              <div key={status} className="bg-slate-50 p-3 rounded min-h-[300px]">
+                <h3 className="font-semibold mb-2">{LABEL[status]}</h3>
+                <div className="space-y-3">
+                  {(cols[status] || []).map((t) => (
+                    <div key={t.id} className="bg-white p-3 rounded shadow-sm">
+                      <div className="font-semibold mb-1">{t.title}</div>
+                      {t.description && <div className="text-sm text-slate-600 mb-2">{t.description}</div>}
+                      <div className="flex items-center gap-2">
+                        <select
+                          value={t.status}
+                          onChange={(e) => changeStatus(t.id, e.target.value)}
+                          className="border rounded px-2 py-1 text-sm"
+                        >
+                          <option value="todo">To Do</option>
+                          <option value="inprogress">In Progress</option>
+                          <option value="done">Done</option>
+                        </select>
+                        <button className="text-sm text-indigo-600 hover:underline px-2 py-1 rounded" onClick={() => openTask(t)}>
+                          Open
+                        </button>
+                        <button
+                          onClick={() => removeTask(t.id)}
+                          className="bg-red-50 text-red-700 hover:bg-red-100 px-2 py-1 rounded text-sm"
+                          title="Delete task"
+                        >
+                          Delete
+                        </button>
                       </div>
                     </div>
+                  ))}
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {/* Task drawer / modal */}
+          {selectedTask && (
+            <div className="fixed inset-0 bg-black/50 flex items-end md:items-center justify-center p-4 z-50">
+              <div className="bg-white w-full md:w-3/5 max-h-[80vh] overflow-auto rounded p-4">
+                <div className="flex justify-between items-center mb-3">
+                  <h3 className="text-lg font-semibold">{selectedTask.title}</h3>
+                  <button className="text-sm text-slate-500" onClick={() => setSelectedTask(null)}>Close</button>
+                </div>
+
+                <div className="mb-3">
+                  <div className="text-sm text-slate-600">{selectedTask.description}</div>
+                </div>
+
+                <div className="mb-3">
+                  <h4 className="font-medium mb-2">Attachments</h4>
+                  <AttachmentList attachments={attachments} onDeleted={() => openTask(selectedTask)} />
+                  <div className="mt-3">
+                    <label className="inline-flex items-center gap-2 cursor-pointer px-3 py-1 bg-slate-100 rounded">
+                      <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 text-slate-700" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a1 1 0 001 1h14a1 1 0 001-1v-1M12 12V3m0 0l3.5 3.5M12 3 8.5 6.5" />
+                      </svg>
+                      <span className="text-sm">Attach file</span>
+                      <input type="file" className="hidden" onChange={(e) => handleUpload(e.target.files?.[0])} />
+                    </label>
                   </div>
                 </div>
-              ))}
-            </div>
-          </div>
-        ))}
-      </div>
-
-      {/* Task drawer / modal */}
-      {selectedTask && (
-        <div className="fixed inset-0 bg-black/50 flex items-end md:items-center justify-center p-4">
-          <div className="bg-white w-full md:w-3/5 max-h-[80vh] overflow-auto rounded p-4">
-            <div className="flex justify-between items-center mb-3">
-              <h3 className="text-lg font-semibold">{selectedTask.title}</h3>
-              <button className="text-sm text-slate-500" onClick={() => setSelectedTask(null)}>Close</button>
-            </div>
-
-            <div className="mb-3">
-              <div className="text-sm text-slate-600">{selectedTask.description}</div>
-            </div>
-
-            <div className="mb-3">
-              <h4 className="font-medium mb-2">Attachments</h4>
-              <AttachmentList attachments={attachments} onDeleted={() => openTask(selectedTask)} />
-              <div className="mt-3">
-                <label className="block text-sm">Upload file</label>
-                <input type="file" onChange={(e) => handleUpload(e.target.files?.[0])} />
               </div>
             </div>
-          </div>
-        </div>
-      )}
+          )}
+        </main>
+      </div>
     </div>
   );
 }
