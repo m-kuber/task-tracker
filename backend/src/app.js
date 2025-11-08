@@ -35,6 +35,9 @@ app.use(
 app.use(express.json());
 app.use(morgan('dev'));
 
+// Serve local uploads folder
+app.use("/uploads", express.static(path.join(__dirname, "../uploads")));
+
 // serve uploaded files (public)
 const uploadsPath = path.join(__dirname, '..', 'uploads'); // backend/uploads
 app.use('/uploads', express.static(uploadsPath));
