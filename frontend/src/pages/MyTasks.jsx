@@ -211,7 +211,7 @@ export default function MyTasks() {
                         <li key={a.id} className="flex justify-between items-center">
                           <a 
                             href={(() => {
-                              const api = import.meta.env.VITE_API_URL || 'http://localhost:4000/api';
+                              const api = import.meta.env.VITE_API_URL || 'http://13.233.152.67:4000/api';
                               const origin = api.replace(/\/?api\/?$/, '');
                               if (a.path.startsWith('http')) return a.path;
                               if (a.path.startsWith('/') || /^[A-Za-z]:/.test(a.path)) {

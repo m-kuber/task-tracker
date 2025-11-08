@@ -11,7 +11,29 @@ const taskRoutes = require('./routes/tasks');
 const commentRoutes = require('./routes/comments');
 
 const app = express();
-app.use(cors());
+
+const cors = require("cors");
+
+const allowedOrigins = [
+  "http://cc-cp-frontend.s3-website.ap-south-1.amazonaws.com",
+  "https://d3sx0m1m1nstvk.cloudfront.net",
+];
+
+app.use(
+  cors({
+    origin: function (origin, callback) {
+      // Allow requests with no origin (like mobile apps, curl, etc.)
+      if (!origin) return callback(null, true);
+      if (allowedOrigins.includes(origin)) {
+        return callback(null, true);
+      } else {
+        return callback(new Error("Not allowed by CORS"));
+      }
+    },
+    credentials: true,
+  })
+);
+
 app.use(express.json());
 app.use(morgan('dev'));
 
