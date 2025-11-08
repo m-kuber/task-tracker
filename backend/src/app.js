@@ -12,8 +12,6 @@ const commentRoutes = require('./routes/comments');
 
 const app = express();
 
-const cors = require("cors");
-
 const allowedOrigins = [
   "http://cc-cp-frontend.s3-website.ap-south-1.amazonaws.com",
   "https://d3sx0m1m1nstvk.cloudfront.net",
